@@ -77,12 +77,24 @@ async function loadSession(code){
 }
 async function saveSession(code, obj){
   try{
-    await fetch(`/api/session/${encodeURIComponent(code)}`, {
+    const res = await fetch(`/api/session/${encodeURIComponent(code)}`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(obj)
     });
-  }catch(e){ console.error('save failed', e); }
+    return await res.json();
+  }catch(e){ console.error('save failed', e); return null; }
+}
+async function saveResponse(code, person, responses, sidecam){
+  try{
+    const res = await fetch(`/api/session/${encodeURIComponent(code)}/response`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({person, responses, sidecam})
+    });
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(e){ console.error('save failed', e); return null; }
 }
 
 async function fetchMySessions(){
@@ -288,7 +300,8 @@ function renderSetup(){
       alert('請先設定練習日期區間');
       return;
     }
-    await saveSession(sessionCode, data);
+    const saved = await saveSession(sessionCode, data);
+    if(saved && !saved.error) data = saved;
     await fetchMySessions();
     view='fill';
     render();
@@ -311,8 +324,8 @@ function renderFill(){
       <button id="goSetup2" class="secondary">修改日期／人員設定</button>
     </div>
   `;
-  document.getElementById('personSelect').onchange = (e)=>{ currentPerson=e.target.value; render(); };
-  document.getElementById('goSummary').onclick = ()=>{ view='summary'; render(); };
+  document.getElementById('personSelect').onchange = async (e)=>{ currentPerson=e.target.value; const fresh = await loadSession(sessionCode); if(fresh) data = fresh; render(); };
+  document.getElementById('goSummary').onclick = async ()=>{ const fresh = await loadSession(sessionCode); if(fresh) data = fresh; view='summary'; render(); };
   document.getElementById('goSetup2').onclick = ()=>{ view='setup'; render(); };
 
   if(currentPerson){
@@ -361,13 +374,15 @@ function renderFill(){
         alert('請選擇是否需要側拍師（此欄位為必填，才能送出）');
         return;
       }
+      const mine = {};
       data.dates.forEach(d=>{
         const cb = formEl.querySelector(`.xcheck[data-date="${d}"]`);
         const note = formEl.querySelector(`.notefield[data-date="${d}"]`);
-        data.responses[currentPerson][d] = cb.checked ? 'X' : (note.value.trim()||'');
+        mine[d] = cb.checked ? 'X' : (note.value.trim()||'');
       });
-      data.sidecam[currentPerson] = sidecamVal;
-      await saveSession(sessionCode, data);
+      const saved = await saveResponse(sessionCode, currentPerson, mine, sidecamVal);
+      if(!saved){ alert('儲存失敗，請稍後再試一次。'); return; }
+      data = saved; // latest data including everyone else's answers
       alert('已儲存你的回覆！');
     };
   }
