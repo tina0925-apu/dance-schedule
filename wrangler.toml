@@ -6,4 +6,4 @@ compatibility_date = "2025-01-01"
 binding = "DB"
 database_name = "dance-schedule"
 # 建立 D1 資料庫後，把它的 ID 貼在這裡（見 README）
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "ae0f3e87-5f33-471f-bd24-a8bd6d4bbc72"
